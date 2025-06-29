@@ -1,0 +1,228 @@
+// Blynk and WiFi credentials
+#define BLYNK_TEMPLATE_ID "TMPL3NGHodA_k"
+#define BLYNK_TEMPLATE_NAME "Quickstart Template"
+#define BLYNK_AUTH_TOKEN "mlJK4X-VXsR9ZhrQQqHaZtoZaeRxU_pK"
+#define BLYNK_PRINT Serial
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+
+// WiFi credentials
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "AshwinDS";
+char pass[] = "shwin123";
+
+// Motor control pins for L298N
+#define IN1 18    // Motor 1, Direction control pin 1
+#define IN2 19    // Motor 1, Direction control pin 2
+#define ENA 14    // Motor 1, Enable pin
+#define IN3 23    // Motor 2, Direction control pin 1
+#define IN4 12    // Motor 2, Direction control pin 2
+#define ENB 25    // Motor 2, Enable pin
+
+// Sensor Pins
+#define DHTPIN 4
+#define DHTTYPE DHT22
+#define RELAY_PIN 5
+#define TEMP_THRESHOLD 30.0
+
+// --- Voltage and Current Sensor Pins and Calibration ---
+#define VOLTAGE_SENSOR_PIN 35   // GPIO35 for voltage sensor
+#define CURRENT_SENSOR_PIN 34   // GPIO34 for current sensor
+#define vCalibration 106.8      // Voltage calibration factor
+#define currCalibration 0.52    // Current calibration factor
+
+// --- Blynk Virtual Pins ---
+#define V0_TEMP V0
+#define V1_AX V1
+#define V2_AY V2
+#define V3_AZ V3
+#define V4_STATUS V4
+#define V5_FORWARD V5
+#define V6_REVERSE V6
+#define V7_LEFT V7
+#define V8_RIGHT V8
+#define V9_VOLTAGE V9
+#define V10_CURRENT V10
+
+DHT dht(DHTPIN, DHTTYPE);
+Adafruit_MPU6050 mpu;
+
+void setup() {
+  Serial.begin(115200);
+  Blynk.begin(auth, ssid, pass);
+
+  // Motor Setup
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  digitalWrite(ENA, HIGH); // Enable motors by default
+  digitalWrite(ENB, HIGH);
+
+  // Sensor Setup
+  dht.begin();
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+
+  // Voltage and Current Sensor Pins (no pinMode needed for analogRead)
+  
+  // MPU6050 Setup
+  if (!mpu.begin()) {
+    Serial.println("MPU6050 Connection Failed!");
+    while (1);
+  }
+  Serial.println("MPU6050 Connected");
+  Serial.println("DHT22 Sensor Started");
+  Serial.println("Blynk Connected");
+  Serial.println("Motor Pins Initialized");
+  Serial.println("Relay Pin Initialized");
+}
+
+// --- Motor Control Functions (implement as needed) ---
+void forwardMotor1() { /* ... */ }
+void forwardMotor2() { /* ... */ }
+void backwardMotor1() { /* ... */ }
+void backwardMotor2() { /* ... */ }
+void stopMotor1() { /* ... */ }
+void stopMotor2() { /* ... */ }
+
+// --- Blynk Motor Control Handlers ---
+BLYNK_WRITE(V5_FORWARD) {
+  int state = param.asInt();
+  Serial.print("Forward Button: "); Serial.println(state);
+  if (state == 1) {
+    digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+    forwardMotor1(); forwardMotor2();
+    Serial.println("Moving Forward");
+  } else {
+    digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+    stopMotor2(); stopMotor1();
+    Serial.println("Stop Motors");
+  }
+}
+
+BLYNK_WRITE(V6_REVERSE) {
+  int state = param.asInt();
+  Serial.print("Reverse Button: "); Serial.println(state);
+  if (state == 1) {
+    digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+    backwardMotor1(); backwardMotor2();
+    Serial.println("Moving Reverse");
+  } else {
+    digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+    stopMotor1(); stopMotor2();
+    Serial.println("Stop Motors");
+  }
+}
+
+BLYNK_WRITE(V7_LEFT) {
+  int state = param.asInt();
+  Serial.print("Left Button: "); Serial.println(state);
+  if (state == 1) {
+    digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+    forwardMotor2();
+    Serial.println("Turning Left");
+  } else {
+    digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+    stopMotor2();
+    Serial.println("Stop Motors");
+  }
+}
+
+BLYNK_WRITE(V8_RIGHT) {
+  int state = param.asInt();
+  Serial.print("Right Button: "); Serial.println(state);
+  if (state == 1) {
+    digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+    forwardMotor1();
+    Serial.println("Turning Right");
+  } else {
+    digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+    stopMotor1();
+    Serial.println("Stop Motors");
+  }
+}
+
+// --- Voltage and Current Reading Functions ---
+float readVoltage() {
+  int sensorValue = analogRead(VOLTAGE_SENSOR_PIN);
+  float voltage = (sensorValue / 4095.0) * 3.3; // ESP32 ADC: 0-4095, 0-3.3V
+  voltage = voltage * vCalibration;             // Calibrated voltage
+  return voltage;
+}
+
+float readCurrent() {
+  int sensorValue = analogRead(CURRENT_SENSOR_PIN);
+  float current = ((sensorValue / 4095.0) * 3.3) / currCalibration; // Calibrated current
+  return current;
+}
+
+void loop() {
+  Blynk.run();
+
+  // --- Temperature Reading ---
+  float temperature = dht.readTemperature();
+  Serial.print("Temperature: "); Serial.print(temperature); Serial.println("°C");
+  Blynk.virtualWrite(V0_TEMP, temperature);
+
+  // --- Cooling System Control ---
+  if (temperature > TEMP_THRESHOLD) {
+    digitalWrite(RELAY_PIN, HIGH);
+    Blynk.virtualWrite(V4_STATUS, "Cooling Activated");
+    Serial.println("Cooling System Activated");
+  } else {
+    digitalWrite(RELAY_PIN, LOW);
+    Blynk.virtualWrite(V4_STATUS, "Temperature Normal");
+    Serial.println("Temperature Normal");
+  }
+
+  // --- MPU6050 Accelerometer Reading ---
+  sensors_event_t accel, gyro, temp;
+  mpu.getEvent(&accel, &gyro, &temp);
+  float ax = accel.acceleration.x;
+  float ay = accel.acceleration.y;
+  float az = accel.acceleration.z;
+  Serial.print("Acceleration X: "); Serial.print(ax);
+  Serial.print(" m/s², Y: "); Serial.print(ay);
+  Serial.print(" m/s², Z: "); Serial.println(az);
+  Blynk.virtualWrite(V1_AX, ax);
+  Blynk.virtualWrite(V2_AY, ay);
+  Blynk.virtualWrite(V3_AZ, az);
+
+  if (ax < -2.0) {
+    Serial.println("Braking Detected!");
+  } else if (ax > 2.0) {
+    Serial.println("Acceleration Detected!");
+  } else {
+    Serial.println("Stable Motion");
+  }
+
+  // --- Voltage and Current Measurement ---
+  float voltage = readVoltage();
+  float current = readCurrent();
+  Serial.print("Voltage: "); Serial.print(voltage); Serial.print(" V, Current: ");
+  Serial.print(current); Serial.println(" A");
+  Blynk.virtualWrite(V9_VOLTAGE, voltage);
+  Blynk.virtualWrite(V10_CURRENT, current);
+
+  delay(1000); // Adjust as needed for sensor update rate
+}
