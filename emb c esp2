@@ -89,14 +89,6 @@ void setup() {
   Serial.println("Relay Pin Initialized");
 }
 
-// --- Motor Control Functions (implement as needed) ---
-void forwardMotor1() { /* ... */ }
-void forwardMotor2() { /* ... */ }
-void backwardMotor1() { /* ... */ }
-void backwardMotor2() { /* ... */ }
-void stopMotor1() { /* ... */ }
-void stopMotor2() { /* ... */ }
-
 // --- Blynk Motor Control Handlers ---
 BLYNK_WRITE(V5_FORWARD) {
   int state = param.asInt();
